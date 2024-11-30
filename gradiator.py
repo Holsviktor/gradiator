@@ -26,8 +26,15 @@ class ColorGradient:
     def apply(self,img):
         image = deepcopy(img)
 
-        x_coordinates = array([np.linspace(0,1,img.shape[1]) for _ in range(img.shape[0])])
-        y_coordinates = array([np.linspace(0,1,img.shape[0]) for _ in range(img.shape[1])]).transpose()
+        if self.gradient_vector[0] >= 0:
+            x_coordinates = array([np.linspace(0,1,img.shape[1]) for _ in range(img.shape[0])])
+        else:
+            x_coordinates = array([np.linspace(1,0,img.shape[1]) for _ in range(img.shape[0])])
+        if self.gradient_vector[1] >= 0:
+            y_coordinates = array([np.linspace(0,1,img.shape[0]) for _ in range(img.shape[1])]).transpose()
+        else:
+            y_coordinates = array([np.linspace(1,0,img.shape[0]) for _ in range(img.shape[1])]).transpose()
+        print(f"Gradient vector: {self.gradient_vector}")
 
         # Calculate projections
         x_projections = abs(np.abs(x_coordinates * self.gradient_vector[0]))
@@ -39,7 +46,7 @@ class ColorGradient:
         for channel in range(3): # iterate through each color channel
             first_color = self.first_color[channel]
             second_color = self.second_color[channel]
-            channel_gradient = first_color + (second_color-first_color)*projection_matrix
+            channel_gradient = first_color + ((second_color-first_color)*projection_matrix)
             channel_gradient /= np.max(channel_gradient)
 
             gradient_channel = image[:,:,channel] * channel_gradient
@@ -88,7 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("dest", help="Name of image file to write changes to")
     parser.add_argument("-c1", help="Hex Code of first color",default="#1111FF")
     parser.add_argument("-c2", help="Hex Code of second color", default="#11FF11")
-    parser.add_argument("-a", "--angle", help="Angle gradient is applied at. Valid range: [-90,90]",default=0, type=float)
+    parser.add_argument("-a", "--angle", help="Angle gradient is applied at in degrees",default=0, type=float)
 
     args = parser.parse_args()
 
@@ -106,16 +113,11 @@ if __name__ == "__main__":
         print(f"{args.c2} is not a valid color code. Examples of valid color codes: #c0ffee   badbad")
         exit(1)
 
-    if -90 <= args.angle <= 90:
-        startpoint = array([0,0])
-        endpoint = array([np.cos(np.radians(args.angle)),np.sin(np.radians(args.angle))])
-        if args.angle < 0:
-            startpoint[1] += 1
-            endpoint[1] += 1
-        print(f"Startpoint {startpoint} Endpoint {endpoint}")
-    else:
-        print(f"Angle must be between -90 and 90")
-        exit(1)
+    startpoint = array([0,0])
+    endpoint = array([np.cos(np.radians(args.angle)),np.sin(np.radians(args.angle))])
+    if args.angle < 0:
+        startpoint[1] += 1
+        endpoint[1] += 1
 
     # Load image
     img = cv.imread(filename)
