@@ -5,35 +5,18 @@ from numpy import dot, array, flip
 import numpy as np
 from numpy.linalg import norm
 from copy import deepcopy
+import argparse
 
 # Color gradient
 class ColorGradient:
-    first_color = array([0,0,0])
-    second_color = array([1,1,1]) #[255,255,255]
-    first_point = array([0,0])
-    end_point = array([1,1])
-
-
-    def __init__(self,first_color=array([0,0,0]),second_color=array([1,1,1]),first_point=array([0,0]),end_point=array([1,1])) -> None:
+    def __init__(self,first_color=array([0,0,0]),second_color=array([1,1,1]),start_point=array([0,0]),end_point=array([1,1])) -> None:
         self.first_color = first_color
         self.second_color = second_color
-        self.first_point = first_point
+        self.start_point = start_point
         self.end_point = end_point
-        self.gradient_vector = end_point-first_point
-        self.gradient_vector_length = None
+        self.gradient_vector = end_point-start_point
+        self.gradient_vector_length = norm(self.gradient_vector)
         tmp_array = []
-        self.initiate_color_vector()
-    def initiate_color_vector(self):
-        self.gradient_vector = self.end_point-self.first_point
-        tmp_array = []
-        for i in [(0,0),(0,1),(1,0),(1,1)]:
-            for j in [(0,0),(0,1),(1,0),(1,1)]:
-                i2 = array([i[0],i[1]])
-                j2 = array([j[0],j[1]])
-                iv = self.projection(i2,self.gradient_vector)
-                jv = self.projection(j2,self.gradient_vector)
-                tmp_array.append(norm(iv-jv))
-        self.gradient_vector_length = np.max(array(tmp_array))
     def project(self,y,x):
         return self.projection(array([y,x]),self.gradient_vector)/self.gradient_vector_length
     def projection(self,w,v):
@@ -46,35 +29,30 @@ class ColorGradient:
         x_coordinates = array([np.linspace(0,1,img.shape[1]) for _ in range(img.shape[0])])
         y_coordinates = array([np.linspace(0,1,img.shape[0]) for _ in range(img.shape[1])]).transpose()
 
-        for channel in range(3): # We iterate through each color channel
+        # Calculate projections
+        x_projections = abs(np.abs(x_coordinates * self.gradient_vector[0]))
+        y_projections = abs(np.abs(y_coordinates * self.gradient_vector[1]))
+
+        projection_matrix = x_projections + y_projections
+        projection_matrix /= np.max(projection_matrix)
+
+        for channel in range(3): # iterate through each color channel
             first_color = self.first_color[channel]
             second_color = self.second_color[channel]
-            channel_gradient = first_color + (second_color-first_color)*x_coordinates
-            print(channel_gradient)
-            print(image[:,:,channel])
+            channel_gradient = first_color + (second_color-first_color)*projection_matrix
+            channel_gradient /= np.max(channel_gradient)
 
             gradient_channel = image[:,:,channel] * channel_gradient
             image[:,:,channel] = gradient_channel.astype(int)
-
-        print(image - img)
         return image
 
-        """
-        for y in range(img.shape[0]):
-            for x in range(img.shape[1]):
-                coordinate = array([y/img.shape[0],x/img.shape[1]]) # Normalize coordinate
-                projection = norm(color_gradient.project(coordinate[0],coordinate[1]))
-                #brightness = 1 - norm(projection)
-                gradient = self.interpolate(projection)
-                img[y,x] = img[y,x] * gradient
-        """
     def invapply(self,img):
         ĩmg = ~img
         inverted_first_color = array([1/self.first_color[0],1/self.first_color[1],1/self.first_color[2]])
         inverted_second_color = array([1/self.second_color[0],1/self.second_color[1],1/self.second_color[2]])
         inv_gradient = ColorGradient(inverted_first_color,
                                      inverted_second_color,
-                                     self.first_point,
+                                     self.start_point,
                                      self.end_point)
         inv_gradient.apply(ĩmg)
         return ĩmg
@@ -85,7 +63,7 @@ class ColorGradient:
         inverted_second_color = array([1/self.c2[0],1/self.c2[1],1/self.c2[2]])
         inv_gradient = ColorGradient(inverted_first_color,
                                      inverted_second_color,
-                                     self.first_point,
+                                     self.start_point,
                                      self.second_point)
         ĩmg = inv_gradient.apply(ĩmg)
         return ĩmg
@@ -95,37 +73,67 @@ class ColorGradient:
         i = self.alternate_inverted_apply(i)
         return ~i
 if __name__ == "__main__":
+    def hex_to_rgb(s):
+        # Converts a valid color code to a tuple of ints.
+        # Throws ValueError if s is not a valid color code
+        hexcode = s.lstrip('#')
+        if len(hexcode) == 6:
+            return array([int(hexcode[i:i+2], 16) for i in (0, 2, 4)])/255
+        else:
+            raise ValueError
+
     # Parse Command Line Arguments:
-    def help():
-        print("Gradiator: The Command Line Color Gradient Applicator")
-        print("Usage: ")
-        sys.exit(0)
-    filename = ""
-    display_image = True
-    output_directory = "output/"
-    if len(sys.argv) >= 2:
-        for arg in sys.argv[1:]:
-            # Placeholder before actual CLI functionality is added
-            if "." in arg:
-                filename = arg
+    parser = argparse.ArgumentParser()
+    parser.add_argument("source", help="Name of image file to apply color gradient to")
+    parser.add_argument("dest", help="Name of image file to write changes to")
+    parser.add_argument("-c1", help="Hex Code of first color",default="#1111FF")
+    parser.add_argument("-c2", help="Hex Code of second color", default="#11FF11")
+    parser.add_argument("-a", "--angle", help="Angle gradient is applied at. Valid range: [-90,90]",default=0, type=float)
+
+    args = parser.parse_args()
+
+    filename = args.source
+    destination_file = args.dest
+
+    try:
+        color1 = hex_to_rgb(args.c1)
+    except:
+        print(f"{args.c1} is not a valid color code. Examples of valid color codes: #c0ffee   badbad")
+        exit(1)
+    try:
+        color2 = hex_to_rgb(args.c2)
+    except:
+        print(f"{args.c2} is not a valid color code. Examples of valid color codes: #c0ffee   badbad")
+        exit(1)
+
+    if -90 <= args.angle <= 90:
+        startpoint = array([0,0])
+        endpoint = array([np.cos(np.radians(args.angle)),np.sin(np.radians(args.angle))])
+        if args.angle < 0:
+            startpoint[1] += 1
+            endpoint[1] += 1
+        print(f"Startpoint {startpoint} Endpoint {endpoint}")
     else:
-        help()
-    if filename == "":
-        help()
-    # Last inn filen
+        print(f"Angle must be between -90 and 90")
+        exit(1)
+
+    # Load image
     img = cv.imread(filename)
-    # Vis bildet og avslutt programmet
+
+    # Apply gradient to image
     if img is None:
         sys.exit("Could not read the image")
-    color_1 = flip(array([142,255,185])/255)
-    color_2 = flip(array([255,226,128])/255)
-    color_gradient = ColorGradient(first_color = color_1, second_color = color_2,end_point=array([1,0]))
+    #color_1 = flip(array([142,255,185])/255)
+    #color_2 = flip(array([255,226,128])/255)
+    color_gradient = ColorGradient(first_color = color1,
+                                   second_color = color2,
+                                   start_point = startpoint,
+                                   end_point = endpoint)
     gradient_image = color_gradient.apply(img)
     #invimg = ~color_gradient.invapply(img)
-    filename = filename.split('/')[-1]
-    cv.imwrite(f"gradient-{filename}",gradient_image)
+    cv.imwrite(destination_file,gradient_image)
 
-    if display_image:
+    if True:
         cv.imshow("Display window",gradient_image)
         keypress = cv.waitKey(0)
 
