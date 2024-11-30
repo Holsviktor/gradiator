@@ -53,7 +53,8 @@ class ColorGradient:
             image[:,:,channel] = gradient_channel.astype(int)
         return image
 
-    def invapply(self,img):
+    def invapply(self,image):
+        img = deepcopy(image)
         ĩmg = ~img
         inverted_first_color = array([1/self.first_color[0],1/self.first_color[1],1/self.first_color[2]])
         inverted_second_color = array([1/self.second_color[0],1/self.second_color[1],1/self.second_color[2]])
@@ -61,20 +62,19 @@ class ColorGradient:
                                      inverted_second_color,
                                      self.start_point,
                                      self.end_point)
-        inv_gradient.apply(ĩmg)
-        return ĩmg
+        return ~inv_gradient.apply(ĩmg)
     def alternate_inverted_apply(self,image): 
         img = deepcopy(image)
         ĩmg = ~img
-        inverted_first_color = array([1/self.c1[0],1/self.c1[1],1/self.c1[2]])
-        inverted_second_color = array([1/self.c2[0],1/self.c2[1],1/self.c2[2]])
+        inverted_first_color = array([1/self.first_color[0],1/self.first_color[1],1/self.first_color[2]])
+        inverted_second_color = array([1/self.second_color[0],1/self.second_color[1],1/self.second_color[2]])
         inv_gradient = ColorGradient(inverted_first_color,
                                      inverted_second_color,
                                      self.start_point,
-                                     self.second_point)
+                                     self.end_point)
         ĩmg = inv_gradient.apply(ĩmg)
         return ĩmg
-    def doubleapp(self,im):
+    def weird_apply(self,im):
         img = deepcopy(im)
         i = self.apply(img)
         i = self.alternate_inverted_apply(i)
@@ -96,6 +96,12 @@ if __name__ == "__main__":
     parser.add_argument("-c1", help="Hex Code of first color",default="#1111FF")
     parser.add_argument("-c2", help="Hex Code of second color", default="#11FF11")
     parser.add_argument("-a", "--angle", help="Angle gradient is applied at in degrees",default=0, type=float)
+    application_mode = parser.add_mutually_exclusive_group()
+    application_mode.add_argument("-n", "--normal", help="Apply gradient regularly", action="store_true")
+    application_mode.add_argument("-d", "--dark", help="Apply gradient on darker colors rather than brighter ones.", action="store_true")
+    application_mode.add_argument("-i", "---invert", help="Apply gradient to inverted image.", action="store_true")
+    application_mode.add_argument("-w", "--weird", help="Do both the normal and inverted gradients.", action="store_true")
+
 
     args = parser.parse_args()
 
@@ -125,13 +131,22 @@ if __name__ == "__main__":
     # Apply gradient to image
     if img is None:
         sys.exit("Could not read the image")
-    #color_1 = flip(array([142,255,185])/255)
-    #color_2 = flip(array([255,226,128])/255)
     color_gradient = ColorGradient(first_color = color1,
                                    second_color = color2,
                                    start_point = startpoint,
                                    end_point = endpoint)
-    gradient_image = color_gradient.apply(img)
+    if args.normal:
+        gradient_image = color_gradient.apply(img)
+    elif args.dark:
+        gradient_image = color_gradient.invapply(img)
+    elif args.invert:
+        gradient_image = color_gradient.alternate_inverted_apply(img)
+    elif args.weird:
+        gradient_image = color_gradient.weird_apply(img)
+    else:
+        gradient_image = color_gradient.apply(img)
+
+
     #invimg = ~color_gradient.invapply(img)
     cv.imwrite(destination_file,gradient_image)
 
