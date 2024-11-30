@@ -33,7 +33,7 @@ class ColorGradient:
                 iv = self.projection(i2,self.gradient_vector)
                 jv = self.projection(j2,self.gradient_vector)
                 tmp_array.append(norm(iv-jv))
-        self.gradient_vector_length = numpy.max(array(tmp_array))
+        self.gradient_vector_length = np.max(array(tmp_array))
     def project(self,y,x):
         return self.projection(array([y,x]),self.gradient_vector)/self.gradient_vector_length
     def projection(self,w,v):
@@ -41,7 +41,25 @@ class ColorGradient:
     def interpolate(self,t):
         return self.first_color + (self.second_color-self.first_color)*t
     def apply(self,img):
-        x_coordinates = np.linspace(
+        image = deepcopy(img)
+
+        x_coordinates = array([np.linspace(0,1,img.shape[1]) for _ in range(img.shape[0])])
+        y_coordinates = array([np.linspace(0,1,img.shape[0]) for _ in range(img.shape[1])]).transpose()
+
+        for channel in range(3): # We iterate through each color channel
+            first_color = self.first_color[channel]
+            second_color = self.second_color[channel]
+            channel_gradient = first_color + (second_color-first_color)*x_coordinates
+            print(channel_gradient)
+            print(image[:,:,channel])
+
+            gradient_channel = image[:,:,channel] * channel_gradient
+            image[:,:,channel] = gradient_channel.astype(int)
+
+        print(image - img)
+        return image
+
+        """
         for y in range(img.shape[0]):
             for x in range(img.shape[1]):
                 coordinate = array([y/img.shape[0],x/img.shape[1]]) # Normalize coordinate
@@ -49,6 +67,7 @@ class ColorGradient:
                 #brightness = 1 - norm(projection)
                 gradient = self.interpolate(projection)
                 img[y,x] = img[y,x] * gradient
+        """
     def invapply(self,img):
         ĩmg = ~img
         inverted_first_color = array([1/self.first_color[0],1/self.first_color[1],1/self.first_color[2]])
@@ -59,19 +78,21 @@ class ColorGradient:
                                      self.end_point)
         inv_gradient.apply(ĩmg)
         return ĩmg
-    def alternate_inverted_apply(self,image):
-    # 
+    def alternate_inverted_apply(self,image): 
         img = deepcopy(image)
         ĩmg = ~img
-        invc1 = array([1/self.c1[0],1/self.c1[1],1/self.c1[2]])
-        invc2 = array([1/self.c2[0],1/self.c2[1],1/self.c2[2]])
-        inv_gradient = ColorGradient(invc1,invc2,self.p1,self.p2)
+        inverted_first_color = array([1/self.c1[0],1/self.c1[1],1/self.c1[2]])
+        inverted_second_color = array([1/self.c2[0],1/self.c2[1],1/self.c2[2]])
+        inv_gradient = ColorGradient(inverted_first_color,
+                                     inverted_second_color,
+                                     self.first_point,
+                                     self.second_point)
         ĩmg = inv_gradient.apply(ĩmg)
         return ĩmg
     def doubleapp(self,im):
         img = deepcopy(im)
         i = self.apply(img)
-        i = self.notinvapply(i)
+        i = self.alternate_inverted_apply(i)
         return ~i
 if __name__ == "__main__":
     # Parse Command Line Arguments:
@@ -80,7 +101,8 @@ if __name__ == "__main__":
         print("Usage: ")
         sys.exit(0)
     filename = ""
-    display_image = False
+    display_image = True
+    output_directory = "output/"
     if len(sys.argv) >= 2:
         for arg in sys.argv[1:]:
             # Placeholder before actual CLI functionality is added
@@ -98,17 +120,14 @@ if __name__ == "__main__":
     color_1 = flip(array([142,255,185])/255)
     color_2 = flip(array([255,226,128])/255)
     color_gradient = ColorGradient(first_color = color_1, second_color = color_2,end_point=array([1,0]))
-    gradient = img
-    color_gradient.apply(gradient)
-    invimg = ~color_gradient.invapply(img)
+    gradient_image = color_gradient.apply(img)
+    #invimg = ~color_gradient.invapply(img)
     filename = filename.split('/')[-1]
-    output_directory = "output/"
-    cv.imwrite(f"{output_directory}gradient-{filename}",gradient)
-    cv.imwrite(f"{output_directory}inv-gradient-{filename}",invimg)
+    cv.imwrite(f"gradient-{filename}",gradient_image)
 
     if display_image:
-        cv.imshow("Display window",img)
-        k = cv.waitKey(0)
+        cv.imshow("Display window",gradient_image)
+        keypress = cv.waitKey(0)
 
-        if k == ord("s"):
-            cv.imwrite("o"+filename, img)
+        #if keypress == ord("s"):
+        #    cv.imwrite("o"+filename, img)
