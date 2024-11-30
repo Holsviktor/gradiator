@@ -10,7 +10,8 @@ The program *should* run on Windows, MacOS and Linux, but I've only tested it on
 ## Usage:
 python3 gradiator.py [options] src dst
 
-Options are:
+### Options are:
+
   Colors:
     
     -c1 [valid six digit hex number]
