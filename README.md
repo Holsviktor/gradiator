@@ -12,6 +12,7 @@ python3 gradiator.py [options] src dst
 
 ### Options are:
 
+    -h --help (self-explanatory)
   Colors:
     
     -c1 [valid six digit hex number]
