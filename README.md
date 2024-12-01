@@ -22,6 +22,10 @@ python3 gradiator.py [options] src dst
   
     -a [angle at which the gradient should be applied in degrees]
     
+  Display:
+
+    -s --show (display new image after program execution)
+    
   Mode:
   
     -n Normal (default)

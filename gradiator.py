@@ -96,6 +96,7 @@ if __name__ == "__main__":
     parser.add_argument("-c1", help="Hex Code of first color",default="#1111FF")
     parser.add_argument("-c2", help="Hex Code of second color", default="#11FF11")
     parser.add_argument("-a", "--angle", help="Angle gradient is applied at in degrees",default=0, type=float)
+    parser.add_argument("-s", "--show", help="Display the new image. Image is still saved to file", action="store_true")
     application_mode = parser.add_mutually_exclusive_group()
     application_mode.add_argument("-n", "--normal", help="Apply gradient regularly", action="store_true")
     application_mode.add_argument("-d", "--dark", help="Apply gradient on darker colors rather than brighter ones.", action="store_true")
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     #invimg = ~color_gradient.invapply(img)
     cv.imwrite(destination_file,gradient_image)
 
-    if True:
+    if args.show:
         cv.imshow("Display window",gradient_image)
         keypress = cv.waitKey(0)
 
