@@ -8,6 +8,7 @@ The simple CLI color gradient applicator.
 The program *should* run on Windows, MacOS and Linux, but I've only tested it on linux.
 
 ## Usage:
+
 python3 gradiator.py [options] src dst
 
 ### Options are:
