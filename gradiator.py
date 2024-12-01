@@ -154,6 +154,3 @@ if __name__ == "__main__":
     if args.show:
         cv.imshow("Display window",gradient_image)
         keypress = cv.waitKey(0)
-
-        #if keypress == ord("s"):
-        #    cv.imwrite("o"+filename, img)
